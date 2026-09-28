@@ -23,13 +23,14 @@ class YOLODetector:
         """
         try:
             if model_path:
-                self.model = YOLO(model_path)
+                self.model = YOLO(model_path, task="detect")
                 logger.info(f"Custom model loaded: {model_path}")
             else:
                 self.model = YOLO(MODEL_CONFIG.MODEL_NAME)
                 logger.info(f"Default model loaded: {MODEL_CONFIG.MODEL_NAME}")
             
-            self.model.to(MODEL_CONFIG.DEVICE)
+            if not str(model_path).lower().endswith(".onnx"):
+                self.model.to(MODEL_CONFIG.DEVICE)
             logger.info(f"Model device: {MODEL_CONFIG.DEVICE}")
         except Exception as e:
             logger.error(f"Error loading model: {str(e)}")

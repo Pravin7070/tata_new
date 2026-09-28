@@ -10,6 +10,7 @@ export const api = axios.create({
   },
 });
 
+export const liveWebSocketUrl = new URL('/live', api.defaults.baseURL).toString().replace(/^http/, 'ws');
 
 
 export const DashboardService = {

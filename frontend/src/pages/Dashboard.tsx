@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { DashboardService } from '../services/api';
+import { DashboardService, liveWebSocketUrl } from '../services/api';
 import { Activity, Target, Battery, AlertTriangle, ShieldCheck, Map as MapIcon, Compass, Wifi, Cpu, Gauge } from 'lucide-react';
 
 // Component Imports
@@ -76,7 +76,7 @@ export const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    const socket = new WebSocket('ws://localhost:8000/live');
+    const socket = new WebSocket(liveWebSocketUrl);
     wsRef.current = socket;
     socket.onopen = () => {
       setConnectionState({ websocketConnected: true });

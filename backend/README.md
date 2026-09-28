@@ -72,7 +72,7 @@ Once the server is running, the interactive API documentation (Swagger UI) is au
 - **Backend**: The FastAPI server located in `/backend`. It acts as a bridge, reading video frames, sending them to the AI Engine, and formatting the JSON payload for the frontend via WebSockets. It also hosts the central model configuration.
 - **AI Engine**: Located in `/ai-engine`. A dedicated pipeline for computer vision and vehicle control decisions. It receives frames from the Backend and returns a structured `FrameCommand` without handling WebSocket communication.
 - **Frontend**: The user interface located in `/frontend` or `/simulation` that receives telemetry and renders it.
-- **Model Folder**: The YOLO model is placed centrally in the `/backend` directory (e.g., `best.pt`).
+- **Model Folder**: The YOLO model is placed centrally in the `/backend` directory (`best.onnx`).
 
 ## Model Configuration & Replacement
 
@@ -82,17 +82,17 @@ The model configuration is defined in `backend/config.py` (`MODEL_PATH`, `MODEL_
 ### How AI Engine Receives the Model
 During initialization, the Backend's `EdgeInference` instantiates the AI Engine and passes the `model_path` to it directly. This avoids hardcoded paths inside the AI Engine.
 
-### How to Replace `best.pt`
-1. Obtain the new YOLO `.pt` weights file.
-2. Rename it to `best.pt` (or update `backend/config.py` to match the new name).
-3. Place the file inside the `/backend` directory, overwriting the old `best.pt`.
+### How to Replace the ONNX Model
+1. Obtain a YOLO detection model exported in ONNX format.
+2. Place it inside `/backend` as `best.onnx` (or update `backend/config.py` to match the filename).
+3. Install the dependencies from both requirements files, including `onnxruntime`.
 4. Restart the backend server.
 
 ### How to Train a New Model
 1. Prepare a dataset with your terrain classes in YOLO format.
 2. Train a YOLOv8 (or supported version) model on your dataset.
-3. Export the `best.pt` weights from your training run.
-4. Replace the old model following the steps above.
+3. Export the trained weights to ONNX format.
+4. Replace `backend/best.onnx` and restart the backend.
 
 ## Terrain Mapping & Decision Logic
 

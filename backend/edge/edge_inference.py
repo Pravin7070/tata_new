@@ -11,7 +11,7 @@ class EdgeInference:
         model_path = config.MODEL_PATH
 
         # If model does not exist, YOLO will attempt to download it automatically.
-        self.model = YOLO(model_path)
+        self.model = YOLO(model_path, task="detect")
         self.running = True
         self.engine = self._load_ai_engine(model_path)
 

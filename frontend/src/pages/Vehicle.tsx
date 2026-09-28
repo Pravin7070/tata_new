@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { liveWebSocketUrl } from '../services/api';
 import { BaseCard } from '../components/ui/BaseCard';
 import { 
   HeartPulse, Battery, Zap, Car, ShieldCheck, Activity, Radio, Power, Info, Wrench, AlertTriangle, CheckCircle2
@@ -15,7 +16,7 @@ export const Vehicle = () => {
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    wsRef.current = new WebSocket('ws://localhost:8000/live');
+    wsRef.current = new WebSocket(liveWebSocketUrl);
     wsRef.current.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
