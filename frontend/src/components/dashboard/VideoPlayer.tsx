@@ -13,14 +13,22 @@ export interface VideoPlayerProps {
   onSettingsClick?: () => void;
 }
 
-export const VideoPlayer = ({ status, resolution, fps, source, streamUrl, boundingBoxes, onSettingsClick }: VideoPlayerProps) => {
+export const VideoPlayer = ({ status, resolution, fps, source, boundingBoxes, onSettingsClick }: VideoPlayerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'video' | 'image' | null>(null);
-  const [isLive, setIsLive] = useState(false);
-  const hasVideoSource = Boolean(videoUrl || isLive || streamUrl);
-  const unavailableStatus = /offline/i.test(status) ? 'CAMERA OFFLINE' : 'WAITING FOR CAMERA';
+  const [cameraDisconnected, setCameraDisconnected] = useState(false);
+  const hasUploadedSource = Boolean(videoUrl);
+  const hasVideoSource = hasUploadedSource || !cameraDisconnected;
+  const unavailableStatus = cameraDisconnected ? 'CAMERA DISCONNECTED' : /offline/i.test(status) ? 'CAMERA OFFLINE' : 'WAITING FOR CAMERA';
+
+  useEffect(() => {
+    if (!cameraDisconnected || hasUploadedSource) return;
+
+    const retryTimer = window.setTimeout(() => setCameraDisconnected(false), 3000);
+    return () => window.clearTimeout(retryTimer);
+  }, [cameraDisconnected, hasUploadedSource]);
 
   useEffect(() => {
     return () => {
@@ -38,27 +46,19 @@ export const VideoPlayer = ({ status, resolution, fps, source, streamUrl, boundi
     fileInputRef.current?.click();
   };
 
-  const handleLiveCamera = async () => {
-    try {
-      setIsLive(true);
-      setMediaType('video');
-      if (videoUrl) {
-        URL.revokeObjectURL(videoUrl);
-        setVideoUrl(null);
-      }
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-
-      await fetch('http://localhost:8000/start-inference', {
-        method: 'POST',
-      });
-    } catch (error) {
-      console.error('Error accessing camera or starting inference:', error);
-      setIsLive(false);
+  const handleLiveCamera = () => {
+    if (videoRef.current?.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach(track => track.stop());
+      videoRef.current.srcObject = null;
     }
+
+    if (videoUrl) {
+      URL.revokeObjectURL(videoUrl);
+      setVideoUrl(null);
+    }
+    setMediaType(null);
+    setCameraDisconnected(false);
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,7 +66,6 @@ export const VideoPlayer = ({ status, resolution, fps, source, streamUrl, boundi
     if (!file) return;
 
     setMediaType(file.type.startsWith('image/') ? 'image' : 'video');
-    setIsLive(false);
     if (videoRef.current?.srcObject) {
       const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
       tracks.forEach(track => track.stop());
@@ -95,20 +94,20 @@ export const VideoPlayer = ({ status, resolution, fps, source, streamUrl, boundi
   return (
   <BaseCard title="LIVE CAMERA FEED" icon={Video} className="h-full flex flex-col">
     <div className="flex-1 bg-automotive-black rounded-lg border border-automotive-gray/30 overflow-hidden relative group min-h-[300px] w-full h-full">
-      {hasVideoSource ? (
+      {hasUploadedSource ? (
         <>
-          {mediaType === 'image' && !isLive ? (
+          {mediaType === 'image' ? (
             <img 
-              src={videoUrl || undefined} 
+              src={videoUrl || undefined}
               className="absolute inset-0 w-full h-full object-cover"
               alt="Uploaded media"
             />
           ) : (
             <video 
               ref={videoRef}
-              src={videoUrl || streamUrl || undefined} 
+              src={videoUrl || undefined} 
               autoPlay 
-              loop={!isLive && !streamUrl}
+              loop
               muted 
               className="absolute inset-0 w-full h-full object-cover"
             />
@@ -134,6 +133,14 @@ export const VideoPlayer = ({ status, resolution, fps, source, streamUrl, boundi
             );
           })}
         </>
+      ) : !cameraDisconnected ? (
+        <img
+          src="http://10.245.109.97:8000/camera"
+          className="absolute inset-0 w-full h-full object-contain"
+          alt="Raspberry Pi live camera stream"
+          onLoad={() => setCameraDisconnected(false)}
+          onError={() => setCameraDisconnected(true)}
+        />
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-automotive-muted">
           <Video className="w-8 h-8 opacity-60" />
@@ -144,7 +151,7 @@ export const VideoPlayer = ({ status, resolution, fps, source, streamUrl, boundi
       {/* Overlays */}
       <div className="absolute top-4 left-4 bg-black/80 px-3 py-1.5 rounded text-[10px] uppercase tracking-wider flex items-center gap-2 border border-automotive-gray/30 text-automotive-white font-mono">
         <span className={`w-2 h-2 rounded-full ${hasVideoSource ? 'bg-automotive-green animate-pulse' : 'bg-automotive-muted'}`}></span>
-        {hasVideoSource ? (isLive || streamUrl ? 'LIVE' : 'MEDIA LOADED') : unavailableStatus} | {resolution} | {fps === null ? 'N/A' : `${fps} FPS`}
+        {hasVideoSource ? (hasUploadedSource ? 'MEDIA LOADED' : 'LIVE') : unavailableStatus} | {resolution} | {fps === null ? 'N/A' : `${fps} FPS`}
       </div>
       
       <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
